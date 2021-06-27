@@ -1,4 +1,5 @@
 import requests, json, logging
+from notify import Notify
 logging.basicConfig(level = logging.INFO,format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 # requests.packages.urllib3.disable_warnings()
@@ -47,13 +48,24 @@ def checkin(cookie):
     response = session.post(url, headers=headers)
     json = response.json()
     logging.info(json)
-    if json['success'] == 1:
-        logging.info("签到成功")
-    elif json['success'] == 0:
-        logging.warning("重复签到")
-    user = getuser(cookie)
-    space = getTotalSpace(cookie)
-    logging.info("用户名：%s, 邮箱：%s, 获得空间：%dM,总空间%.2fG",user['name'],user['email'], json['space']/1048576,space['um']['q']/1073741824)
+    # 通知信息
+    message = ''
+    if 'success' in json :
+        user = getuser(cookie)
+        space = getTotalSpace(cookie)
+        message = "用户名：%s\n邮箱：%s\n获得空间：%dM,总空间%.2fG" % (user['name'], user['email'], json['space'] / 1048576, space['um']['q'] / 1073741824)
+
+        if json['success'] == 1:
+            logging.info("签到成功")
+            message += "\n状态：签到成功"
+        elif json['success'] == 0:
+            logging.warning("重复签到")
+            message += "\n状态：重复签到"
+        logging.info(message)
+    else:
+        logging.info("签到失败:%s",json['message'])
+        message += "\n状态：签到失败\n原因：" + json['message']
+    Notify().sendMessage(message)
     return json
 
 def main_handler(event, context):
